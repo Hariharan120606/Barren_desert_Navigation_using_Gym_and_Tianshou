@@ -480,7 +480,7 @@ def main():
             slip_text = "⚠️ WIND SLIPPED" if st.session_state.last_slipped else "✔️ Stable"
             t_c2.metric("💨 Atmospheric State", slip_text)
 
-            model_badge = "💨 Stochastic (p=0.2)" if is_slip else "🛡️ Deterministic (p=0.0)"
+            model_badge = "💨 Stochastic (p=0.2)" if is_stoch_model else "🛡️ Deterministic (p=0.0)"
             st.markdown(f"**Loaded Model:** `{active_model_file}` ({model_badge})")
             st.markdown(f"**Policy Action:** `{action_names[best_act]}` (Q = {q_arr[best_act]:+.2f})")
 
