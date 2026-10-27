@@ -37,7 +37,8 @@ This project delivers:
 
 ## 📊 Multi-Grid Convergence Benchmark
 
-All models were evaluated across 500 training episodes:
+### 1. Deterministic Navigation (Calm Desert, $p_{\text{slip}} = 0.0$)
+All models were evaluated across 500 training episodes under deterministic physics, converging exactly to the theoretical BFS minimum:
 
 | Grid Dimension | Total States | Total Episodes | Milestone Crossed ($> +1.0$) | Best Test Reward | Actual Steps | Theoretical BFS Steps | Optimality Gap |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -46,20 +47,35 @@ All models were evaluated across 500 training episodes:
 | **$16 \times 16$** | 256 | **500** | **Episode 185** | **+10.752** | **30** | **30** | **0 (100% Optimal)** |
 | **$32 \times 32$** | 1,024 | **500** | **Episode 150** | **+9.390** | **62** | **62** | **0 (100% Optimal)** |
 
+### 2. Cross-Atmospheric Robustness Benchmark (Wind Turbulence, $p_{\text{slip}} = 0.2$)
+Empirical performance across 300 trials per configuration comparing the Deterministic Policy ($p=0.0$) against the Stochastic Risk-Averse Policy ($p=0.2$):
+
+| Grid Dimension | Total States | Deterministic in Storm ($p=0.2$) | Stochastic in Storm ($p=0.2$) | Risk-Averse Safety Advantage |
+| :---: | :---: | :---: | :---: | :---: |
+| **$4 \times 4$** | 16 | 69.7% Survival | **80.3% Survival** | **+10.6% Boost** |
+| **$8 \times 8$** | 64 | 70.3% Survival | **87.0% Survival** | **+16.7% Boost** |
+| **$16 \times 16$** | 256 | 45.3% Survival | **82.7% Survival** | **+37.4% Boost** |
+| **$32 \times 32$** | 1,024 | 27.3% Survival | **78.3% Survival** | **+51.0% Boost** |
+
+> [!NOTE]
+> On the $32 \times 32$ desert, the deterministic policy hugs quicksand borders to achieve the 62-step minimum, making it vulnerable to wind gusts (27.3% survival). The stochastic policy learns wider safe corridors, boosting survival to **78.3% (+51.0% gain)**.
+
 ---
 
 ## 📁 Repository File & Directory Structure
 
 ```
 ├── barren_desert_navigation.ipynb          # Main pre-executed Jupyter Notebook (Tianshou 2.0 DQN)
-├── barren_desert_navigation_original.ipynb # Backup of the initial un-refactored starter notebook
+├── barren_desert_navigation_original.ipynb # Backup of the initial starter notebook
 ├── streamlit_app.py                        # Interactive Streamlit Web Application
 ├── saved_data/                             # Serialized weights, histories, and layouts
 │   ├── grids.json                          # Fixed reproducible desert maps (4x4, 8x8, 16x16, 32x32)
 │   ├── model_{size}x{size}.pt              # Deterministic DQN policies (p = 0.0, BFS optimal)
 │   ├── model_{size}x{size}_slip02.pt       # Stochastic DQN policies (p = 0.2, risk-averse)
-│   ├── history_{size}x{size}.json          # 500-episode raw reward & epsilon decay logs
-│   └── summary.json                        # Benchmark performance metrics across all 4 scales
+│   ├── history_{size}x{size}.json          # Deterministic 500-episode raw reward & epsilon decay logs
+│   ├── history_{size}x{size}_slip02.json   # Stochastic 500-episode raw reward & epsilon decay logs
+│   ├── summary.json                        # Deterministic benchmark performance metrics across 4 scales
+│   └── benchmark_comparison.json           # Cross-atmospheric 300-trial storm resilience comparison
 ├── model_cache/                            # Checkpoints cached during on-the-fly experiments
 ├── __pycache__/                            # Compiled Python bytecode
 └── README.md                               # Project documentation & guide
@@ -83,16 +99,18 @@ Streamlit will launch local and network URLs (default: `http://localhost:8501`).
 #### Navigating the App Interface
 - **Sidebar Controls**:
   - **Select Desert Dimension**: Choose between `4×4 Grid (16 States)`, `8×8 Grid (64 States)`, `16×16 Grid (256 States)`, or `32×32 Grid (1,024 States)`.
-  - **Wind Gust Condition & Model**: Toggle between `🛡️ No Slip (p = 0.0)` (loads the BFS-optimal deterministic policy) and `💨 Wind Slip (p = 0.2)` (dynamically loads the stochastic risk-averse policy trained under 20% wind gusts).
+  - **Policy Model Weight**: Choose `🛡️ Deterministic Model (Trained p = 0.0)` (exact BFS shortest-path policy) or `💨 Stochastic Model (Trained p = 0.2)` (risk-averse policy trained under wind slip).
+  - **Environmental Wind Physics**: Select `☀️ Calm Desert (p_slip = 0.0)` or `🌪️ Wind Gusts (p_slip = 0.2)` to test any model under any atmospheric physics live.
+  - **Real-Time Slip Visualizer**: Whenever wind blows the agent off-course, an alert banner displays the exact intended vs actual direction, and the agent tile turns glowing crimson with a `⚠️` beacon.
   - **Animation Step Delay (s)**: Adjust animation speed (`0.02s` to `0.60s`).
   - **Operation Mode**:
-    1. **🤖 AI Autonomous Traversal**: Click **"▶ Auto-Run Agent"** to watch the agent navigate from Start (`S`) to Oasis (`★`) in a continuous, smooth animation without page reruns.
+    1. **🤖 AI Autonomous Traversal**: Click **"▶ Auto-Run Agent"** to watch the agent navigate from Start (`S`) to Oasis (`★`) in a continuous, smooth animation.
     2. **🕹️ Step-by-Step AI Inspection**: Step through the agent's decisions one action at a time. The real-time **Q-Value Confidence Bar Chart** reveals the exact expected utility the network computes for `LEFT`, `DOWN`, `RIGHT`, and `UP`.
     3. **🧗 Manual Traversal (Human)**: Take control of the agent yourself using on-screen directional buttons to experience the quicksand hazards firsthand.
 - **Top Tabs**:
-  - **🗺️ Live Desert Traversal**: Interactive grid radar and mission log.
-  - **📈 Convergence & Learning Metrics**: 500-episode learning curves (raw rewards, MA-15 smoothed trendline, milestone threshold line, and $\epsilon$-decay schedule).
-  - **📊 Cross-Grid Benchmark**: Comprehensive comparison table and side-by-side bar charts comparing Agent Steps vs Theoretical BFS Shortest Paths.
+  - **🧭 Tactical Traversal Arena**: Interactive grid radar, real-time slip banner, Q-value bars, and mission telemetry.
+  - **📈 Convergence & Learning Metrics**: 500-episode learning curves (raw rewards, MA-15 smoothed trendline, milestone threshold line, and $\epsilon$-decay schedule) dynamically rendered for either policy.
+  - **📊 Cross-Grid Benchmark**: Comprehensive comparison tables and dual subplots: Path Length vs BFS Optimal and Storm Resilience Comparison (Deterministic vs Stochastic survival under $p_{\text{slip}}=0.2$).
 
 ---
 

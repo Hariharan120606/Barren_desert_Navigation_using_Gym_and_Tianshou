@@ -140,7 +140,12 @@ def load_grids():
             return json.load(f)
     return {}
 
-def load_history(size):
+def load_history(size, is_stoch=False):
+    if is_stoch:
+        path = os.path.join(DATA_DIR, f"history_{size}x{size}_slip02.json")
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
     path = os.path.join(DATA_DIR, f"history_{size}x{size}.json")
     if os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
@@ -414,15 +419,17 @@ def main():
     )
 
     policy, active_model_file = get_policy(selected_size, slip_mode=slip_mode)
-    history = load_history(selected_size)
+    history = load_history(selected_size, is_stoch=is_stoch_model)
 
     # Top KPI Metrics Header
     col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
     col_m1.metric("Dimension", f"{selected_size} × {selected_size}")
     col_m2.metric("Total States", f"{selected_size * selected_size}")
     col_m3.metric("Policy Status", "100% Converged")
-    col_m4.metric("Steps to Goal", f"{meta.get('steps', '-')} / {optimal_steps} (BFS)")
-    col_m5.metric("Training Time", f"{meta.get('training_time', 0.0):.2f}s")
+    steps_val = history.get('steps_to_goal', meta.get('steps', '-'))
+    time_val = history.get('training_time', meta.get('training_time', 0.0))
+    col_m4.metric("Steps to Goal", f"{steps_val} / {optimal_steps} (BFS)")
+    col_m5.metric("Training Time", f"{time_val:.2f}s")
 
     # Main Tabs
     tab_demo, tab_analytics, tab_benchmark = st.tabs([
@@ -736,8 +743,18 @@ def main():
     # TAB 2: Learning Curves & Convergence
     # ==========================================
     with tab_analytics:
-        st.markdown(f"### 📈 Convergence & Learning Metrics ({selected_size}×{selected_size} Desert)")
-        st.markdown("Policy was trained across 500 episodes with an exploration-to-exploitation $\\epsilon$-greedy schedule and temporal-difference credit propagation.")
+        policy_label = "Stochastic Policy (p=0.2)" if is_stoch_model else "Deterministic Policy (p=0.0)"
+        st.markdown(f"### 📈 Convergence & Learning Metrics: {selected_size}×{selected_size} Desert ({policy_label})")
+        if is_stoch_model:
+            st.markdown(
+                "Trained under **$p_{\\text{slip}} = 0.2$ wind turbulence** across 500 episodes with an $\\epsilon$-greedy exploration schedule. "
+                "The neural network learns a risk-averse strategy that navigates away from quicksand boundaries."
+            )
+        else:
+            st.markdown(
+                "Trained under **calm conditions ($p_{\\text{slip}} = 0.0$)** across 500 episodes with an $\\epsilon$-greedy exploration schedule. "
+                "The temporal-difference credit propagation converges exactly to the mathematical BFS shortest path."
+            )
 
         if history and "rewards" in history:
             rewards = history["rewards"]
@@ -763,7 +780,7 @@ def main():
                 ax1.axvline(target_crossed, color='#10b981', linestyle='--', linewidth=1.2, label=f'Milestone > +1.0 (Ep {target_crossed})')
             ax1.set_xlabel("Episode (1 to 500)", color='#94a3b8', fontsize=11)
             ax1.set_ylabel("Reward", color='#94a3b8', fontsize=11)
-            ax1.set_title(f"500-Episode Learning Curve ({selected_size}×{selected_size})", color='#38bdf8', fontsize=12, fontweight='bold')
+            ax1.set_title(f"500-Episode Learning Curve ({selected_size}×{selected_size} - {policy_label})", color='#38bdf8', fontsize=12, fontweight='bold')
             ax1.tick_params(colors='#cbd5e1')
             for spine in ax1.spines.values():
                 spine.set_color('#1e293b')
