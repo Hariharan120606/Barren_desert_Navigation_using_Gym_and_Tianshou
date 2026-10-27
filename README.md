@@ -56,14 +56,9 @@ All models were evaluated across 500 training episodes:
 ├── streamlit_app.py                        # Interactive Streamlit Web Application
 ├── saved_data/                             # Serialized weights, histories, and layouts
 │   ├── grids.json                          # Fixed reproducible desert maps (4x4, 8x8, 16x16, 32x32)
-│   ├── model_4x4.pt                        # PyTorch DQN state dict (4x4)
-│   ├── model_8x8.pt                        # PyTorch DQN state dict (8x8)
-│   ├── model_16x16.pt                      # PyTorch DQN state dict (16x16)
-│   ├── model_32x32.pt                      # PyTorch DQN state dict (32x32)
-│   ├── history_4x4.json                    # 500-episode raw reward & epsilon decay log (4x4)
-│   ├── history_8x8.json                    # 500-episode raw reward & epsilon decay log (8x8)
-│   ├── history_16x16.json                  # 500-episode raw reward & epsilon decay log (16x16)
-│   ├── history_32x32.json                  # 500-episode raw reward & epsilon decay log (32x32)
+│   ├── model_{size}x{size}.pt              # Deterministic DQN policies (p = 0.0, BFS optimal)
+│   ├── model_{size}x{size}_slip02.pt       # Stochastic DQN policies (p = 0.2, risk-averse)
+│   ├── history_{size}x{size}.json          # 500-episode raw reward & epsilon decay logs
 │   └── summary.json                        # Benchmark performance metrics across all 4 scales
 ├── model_cache/                            # Checkpoints cached during on-the-fly experiments
 ├── __pycache__/                            # Compiled Python bytecode
@@ -88,7 +83,7 @@ Streamlit will launch local and network URLs (default: `http://localhost:8501`).
 #### Navigating the App Interface
 - **Sidebar Controls**:
   - **Select Desert Dimension**: Choose between `4×4 Grid (16 States)`, `8×8 Grid (64 States)`, `16×16 Grid (256 States)`, or `32×32 Grid (1,024 States)`.
-  - **Wind Gust Stochastic Slip ($p$)**: Set between `0.00` (deterministic) and `0.25` (25% probability of slipping orthogonally).
+  - **Wind Gust Condition & Model**: Toggle between `🛡️ No Slip (p = 0.0)` (loads the BFS-optimal deterministic policy) and `💨 Wind Slip (p = 0.2)` (dynamically loads the stochastic risk-averse policy trained under 20% wind gusts).
   - **Animation Step Delay (s)**: Adjust animation speed (`0.02s` to `0.60s`).
   - **Operation Mode**:
     1. **🤖 AI Autonomous Traversal**: Click **"▶ Auto-Run Agent"** to watch the agent navigate from Start (`S`) to Oasis (`★`) in a continuous, smooth animation without page reruns.

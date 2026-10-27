@@ -155,7 +155,7 @@ def load_summary():
     return {}
 
 @st.cache_resource
-def load_model(size, mtime=None):
+def load_model(size, slip_mode="noslip", mtime=None):
     state_size = size * size
     net = DesertDQNNet(state_size=state_size, action_size=4)
     policy = DiscreteQLearningPolicy(
@@ -164,7 +164,14 @@ def load_model(size, mtime=None):
         observation_space=spaces.Discrete(state_size),
         eps_inference=0.0
     )
-    model_path = os.path.join(DATA_DIR, f"model_{size}x{size}.pt")
+    if slip_mode == "slip02":
+        model_path = os.path.join(DATA_DIR, f"model_{size}x{size}_slip02.pt")
+        # Fail-safe: fallback to deterministic model if slip02 does not exist
+        if not os.path.exists(model_path):
+            model_path = os.path.join(DATA_DIR, f"model_{size}x{size}.pt")
+    else:
+        model_path = os.path.join(DATA_DIR, f"model_{size}x{size}.pt")
+
     if os.path.exists(model_path):
         state_dict = torch.load(model_path, map_location="cpu")
         if any(k.startswith("model.") for k in state_dict.keys()):
@@ -172,12 +179,15 @@ def load_model(size, mtime=None):
         else:
             policy.model.load_state_dict(state_dict)
     policy.eval()
-    return policy
+    return policy, os.path.basename(model_path)
 
-def get_policy(size):
-    model_path = os.path.join(DATA_DIR, f"model_{size}x{size}.pt")
+def get_policy(size, slip_mode="noslip"):
+    candidate = f"model_{size}x{size}_slip02.pt" if slip_mode == "slip02" else f"model_{size}x{size}.pt"
+    model_path = os.path.join(DATA_DIR, candidate)
+    if not os.path.exists(model_path):
+        model_path = os.path.join(DATA_DIR, f"model_{size}x{size}.pt")
     mtime = os.path.getmtime(model_path) if os.path.exists(model_path) else 0
-    return load_model(size, mtime=mtime)
+    return load_model(size, slip_mode=slip_mode, mtime=mtime)
 
 
 # ==========================================
@@ -350,12 +360,19 @@ def main():
     meta = summary.get(str(selected_size), {})
     optimal_steps = meta.get('optimal_bfs_steps', selected_size * 2 - 2)
 
-    p_slip = st.sidebar.slider(
-        "Wind Gust Stochastic Slip (p):",
-        0.0, 0.25, 0.0, step=0.01,
-        help="0.0 = Deterministic navigation (pure greedy rollout). > 0.0 introduces random wind diversions."
+    slip_choice = st.sidebar.radio(
+        "Wind Gust Condition & Model:",
+        [
+            "🛡️ No Slip (p = 0.0) — BFS Optimal Model",
+            "💨 Wind Slip (p = 0.2) — Stochastic Model"
+        ],
+        index=0,
+        help="Select environmental slip physics and dynamically load the corresponding trained DQN policy."
     )
-    
+    is_slip = ("0.2" in slip_choice)
+    p_slip = 0.2 if is_slip else 0.0
+    slip_mode = "slip02" if is_slip else "noslip"
+
     speed = st.sidebar.slider(
         "Animation Step Delay (s):",
         0.02, 0.60, 0.15, step=0.02,
@@ -367,7 +384,7 @@ def main():
         ["🤖 AI Autonomous Traversal", "🕹️ Step-by-Step AI Inspection", "🧗 Manual Traversal (Human)"]
     )
 
-    policy = get_policy(selected_size)
+    policy, active_model_file = get_policy(selected_size, slip_mode=slip_mode)
     history = load_history(selected_size)
 
     # Top KPI Metrics Header
@@ -389,9 +406,12 @@ def main():
     # TAB 1: Tactical Traversal Arena
     # ==========================================
     with tab_demo:
-        # Session state management for current size
-        if "sim_size" not in st.session_state or st.session_state.sim_size != selected_size:
+        # Session state management for current size & slip mode
+        if ("sim_size" not in st.session_state or 
+            st.session_state.sim_size != selected_size or 
+            st.session_state.get("sim_slip_mode") != slip_mode):
             st.session_state.sim_size = selected_size
+            st.session_state.sim_slip_mode = slip_mode
             st.session_state.agent_pos = (0, 0)
             st.session_state.path = [(0, 0)]
             st.session_state.total_reward = 0.0
@@ -427,6 +447,8 @@ def main():
             slip_text = "⚠️ WIND SLIPPED" if st.session_state.last_slipped else "✔️ Stable"
             t_c2.metric("💨 Atmospheric State", slip_text)
 
+            model_badge = "💨 Stochastic (p=0.2)" if is_slip else "🛡️ Deterministic (p=0.0)"
+            st.markdown(f"**Loaded Model:** `{active_model_file}` ({model_badge})")
             st.markdown(f"**Policy Action:** `{action_names[best_act]}` (Q = {q_arr[best_act]:+.2f})")
 
             # Q-Values Chart (Dark Mode Tactical)
@@ -757,6 +779,7 @@ def main():
         1. **Cycle-Free Convergence**: Unlike standard $\\epsilon$-greedy random walk which cycles indefinitely in cul-de-sacs on larger grids, our Tianshou $n$-step DQN with initial discovery transitions propagates the $+1.0$ Oasis reward backward in seconds.
         2. **100% BFS-Optimal Trajectories**: On all four grid geometries ($4\\times 4$, $8\\times 8$, $16\\times 16$, $32\\times 32$), the greedy policy exactly matches the minimum theoretical shortest path distance.
         3. **Dynamic Neural Scaling**: Embedding dimension and hidden layers automatically adapt to input state dimension ($N^2$), allowing identical architecture code across all desert scales.
+        4. **Dual Atmospheric Policies**: The app supports seamless real-time switching between the **Deterministic Policy** (`p = 0.0`, theoretical BFS-optimal) and the **Stochastic Risk-Averse Policy** (`p = 0.2`, trained under 20% random wind gusts).
         """)
 
 
