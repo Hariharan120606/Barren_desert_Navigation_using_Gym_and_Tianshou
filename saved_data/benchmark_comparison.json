@@ -1,0 +1,46 @@
+{
+  "4": {
+    "size": 4,
+    "states": 16,
+    "det_calm_acc": 100.0,
+    "det_calm_steps": 6,
+    "det_storm_acc": 69.7,
+    "stoch_calm_acc": 100.0,
+    "stoch_calm_steps": 6,
+    "stoch_storm_acc": 80.3,
+    "stoch_storm_steps": 7.1
+  },
+  "8": {
+    "size": 8,
+    "states": 64,
+    "det_calm_acc": 100.0,
+    "det_calm_steps": 14,
+    "det_storm_acc": 70.3,
+    "stoch_calm_acc": 100.0,
+    "stoch_calm_steps": 14,
+    "stoch_storm_acc": 87.0,
+    "stoch_storm_steps": 17.8
+  },
+  "16": {
+    "size": 16,
+    "states": 256,
+    "det_calm_acc": 100.0,
+    "det_calm_steps": 30,
+    "det_storm_acc": 45.3,
+    "stoch_calm_acc": 100.0,
+    "stoch_calm_steps": 32,
+    "stoch_storm_acc": 82.7,
+    "stoch_storm_steps": 40.4
+  },
+  "32": {
+    "size": 32,
+    "states": 1024,
+    "det_calm_acc": 100.0,
+    "det_calm_steps": 62,
+    "det_storm_acc": 27.3,
+    "stoch_calm_acc": 100.0,
+    "stoch_calm_steps": 62,
+    "stoch_storm_acc": 78.3,
+    "stoch_storm_steps": 79.1
+  }
+}
